@@ -70,7 +70,7 @@ st.markdown("""
 # Load data
 @st.cache_data
 def load_overview_data():
-    df = pd.read_excel("data_all_pre-processing.xlsx")
+    df = pd.read_excel("mergedall_dataset.xlsx")
     return df
 
 @st.cache_data
@@ -625,8 +625,7 @@ def show_forecasting():
 # Main app
 def main():
     st.title("Dashboard Analisis Stunting")
-    st.markdown("Dashboard ini disusun untuk menganalisis permasalahan stunting di Provinsi Jawa Timur pada tahun 2022 dengan memanfaatkan data yang bersumber dari Open Data Jawa Timur serta dilengkapi dengan data dari beberapa provinsi lain sebagai pembanding. Melalui dashboard ini, diharapkan pengguna dapat memperoleh gambaran menyeluruh mengenai kondisi stunting di Jawa Timur sekaligus memantau prediksi tren kasus stunting pada periode selanjutnya.")
-    
+    st.markdown("Dashboard ini disusun untuk menganalisis permasalahan stunting di Provinsi Jawa Timur pada tahun 2022 dengan memanfaatkan data yang bersumber dari Open Data Jawa Timur serta dilengkapi dengan data dari beberapa provinsi lain sebagai pembanding.")
     # Sidebar navigation
     st.sidebar.header("Navigation")
     app_mode = st.sidebar.selectbox("Pilih analisis", 
