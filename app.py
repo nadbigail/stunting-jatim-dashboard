@@ -175,6 +175,7 @@ def show_data_overview(df):
     
     with col1:
         numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+        numeric_cols = [col for col in numeric_cols if col != "Data_Tahun"]
         
         if numeric_cols:
             selected_num_col = st.selectbox("Select numeric column", numeric_cols)
