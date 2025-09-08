@@ -357,22 +357,25 @@ def show_clustering_analysis():
             """)
 
 def show_regression_model(df):
-    st.header("Prediksi Stunting dengan Model Regresi")
+    st.subheader("Regression Model")
 
-    # Select features and target
-    X = df.iloc[:, 5:14].values
-    y = df.iloc[:, 4].values
-    feature_names = df.columns[5:14]
+    # --- Prepare Data ---
+    try:
+        # X = features (columns 5–13), y = target (column 4)
+        X = df.iloc[:, 5:14].values
+        y = pd.to_numeric(df.iloc[:, 4], errors="coerce")  # force numeric
 
-    # Split data
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
-    )
+        # Drop rows where y is NaN (from conversion)
+        mask = ~np.isnan(y)
+        X = X[mask]
+        y = y[mask]
 
-    with st.spinner("Training Models..."):
-        # -------------------
-        # Model 1: Random Forest
-        # -------------------
+        # Split data
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42
+        )
+
+        # --- Random Forest ---
         rf_model = RandomForestRegressor(
             n_estimators=500,
             max_depth=10,
@@ -388,11 +391,21 @@ def show_regression_model(df):
 
         # Feature Importance
         rf_importances = rf_model.feature_importances_
+        feature_names = df.columns[5:14]
         indices_rf = np.argsort(rf_importances)[::-1]
 
-        # -------------------
-        # Model 2: XGBoost
-        # -------------------
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.barh(range(len(indices_rf)), rf_importances[indices_rf])
+        ax.set_yticks(range(len(indices_rf)))
+        ax.set_yticklabels([feature_names[i] for i in indices_rf])
+        ax.set_xlabel("Importance")
+        ax.set_ylabel("Features")
+        ax.set_title("Feature Importance (Random Forest)")
+        ax.invert_yaxis()
+        ax.grid(alpha=0.3, linestyle="--")
+        st.pyplot(fig)
+
+        # --- XGBoost ---
         xgb_model = xgb.XGBRegressor(
             objective="reg:squarederror",
             n_estimators=1000,
@@ -405,9 +418,7 @@ def show_regression_model(df):
         xgb_model.fit(X_train, y_train)
         y_pred_xgb = xgb_model.predict(X_test)
 
-        # -------------------
-        # Model 3: Stacking (Gabungan)
-        # -------------------
+        # --- Stacking Regressor ---
         stack_model = StackingRegressor(
             estimators=[
                 ("rf", rf_model),
@@ -426,54 +437,35 @@ def show_regression_model(df):
         stack_model.fit(X_train, y_train)
         y_pred_stack = stack_model.predict(X_test)
 
-        # -------------------
-        # Evaluasi Stacking
-        # -------------------
-        mse = mean_squared_error(y_test, y_pred_stack)
-        rmse = np.sqrt(mse)
-        mae = mean_absolute_error(y_test, y_pred_stack)
-        r2 = r2_score(y_test, y_pred_stack)
+        # --- Visualization ---
+        fig2, ax2 = plt.subplots(figsize=(8, 6))
+        ax2.scatter(y_test, y_pred_stack, alpha=0.6, color="blue")
+        ax2.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], "r--")
+        ax2.set_xlabel("Actual Values")
+        ax2.set_ylabel("Predicted Values")
+        ax2.set_title("Regression Using Stacking Regressor")
+        ax2.grid(alpha=0.3)
+        st.pyplot(fig2)
 
-        st.subheader("Evaluasi Model Stacking Regressor")
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("MSE", f"{mse:.4f}")
-        with col2:
-            st.metric("RMSE", f"{rmse:.4f}")
-        with col3:
-            st.metric("MAE", f"{mae:.4f}")
-        with col4:
-            st.metric("R²", f"{r2:.4f}")
+        # --- Evaluation ---
+        def evaluate(y_true, y_pred, model_name):
+            mse = mean_squared_error(y_true, y_pred)
+            rmse = np.sqrt(mse)
+            mae = mean_absolute_error(y_true, y_pred)
+            r2 = r2_score(y_true, y_pred)
+            st.markdown(f"### Evaluation: {model_name}")
+            st.write(f"- **MSE:** {mse:.4f}")
+            st.write(f"- **RMSE:** {rmse:.4f}")
+            st.write(f"- **MAE:** {mae:.4f}")
+            st.write(f"- **R²:** {r2:.4f}")
 
-        # ===============================
-        # Visualisasi Model
-        # ===============================
-        st.subheader("Visualisasi Model")
+        evaluate(y_test, y_pred_rf, "Random Forest")
+        evaluate(y_test, y_pred_xgb, "XGBoost")
+        evaluate(y_test, y_pred_stack, "Stacking Regressor")
 
-        col_left, col_right = st.columns(2)
+    except Exception as e:
+        st.error(f"Error in regression model: {e}")
 
-        # Feature Importance Plot
-        with col_left:
-            fig, ax = plt.subplots(figsize=(6, 6))
-            ax.barh(range(len(indices_rf)), rf_importances[indices_rf], color="skyblue")
-            ax.set_yticks(range(len(indices_rf)))
-            ax.set_yticklabels([feature_names[i] for i in indices_rf])
-            ax.set_xlabel("Importance")
-            ax.set_title("Feature Importance (Random Forest)")
-            ax.invert_yaxis()
-            ax.grid(alpha=0.3, linestyle="--")
-            st.pyplot(fig)
-
-        # Scatter Plot Prediksi
-        with col_right:
-            fig, ax = plt.subplots(figsize=(6, 6))
-            ax.scatter(y_test, y_pred_stack, alpha=0.6, color="blue")
-            ax.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], "r--", linewidth=2)
-            ax.set_xlabel("Actual Values", fontsize=12)
-            ax.set_ylabel("Predicted Values", fontsize=12)
-            ax.set_title("Prediksi vs Aktual (Stacking Regressor)", fontsize=14, fontweight='bold')
-            ax.grid(alpha=0.3)
-            st.pyplot(fig)
 
 # Forecasting
 def detect_outliers_iqr(df, column='total_jumlah'):
