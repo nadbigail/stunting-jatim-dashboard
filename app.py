@@ -67,10 +67,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Load data
 @st.cache_data
 def load_overview_data():
-    df = pd.read_excel("mergedall_dataset.xlsx")
+    df = pd.read_excel("mergedall_dataset.xlsx")   # untuk Data Overview
     return df
 
 @st.cache_data
@@ -86,6 +85,11 @@ def load_cluster_results():
 @st.cache_data
 def load_forecasting_data():
     df = pd.read_excel("stuntingjatim_merged.xlsx")
+    return df
+
+@st.cache_data
+def load_regression_data():
+    df = pd.read_excel("data_all_pre-processing.xlsx")   # khusus Regression
     return df
 
 # Function to perform clustering analysis
@@ -352,22 +356,21 @@ def show_clustering_analysis():
             - Perkuat sistem **monitoring & evaluasi**  
             """)
 
-# Regression model
 def show_regression_model(df):
     st.header("Prediksi Stunting dengan Model Regresi")
-    
+
     # Select features and target
     X = df.iloc[:, 5:14].values
     y = df.iloc[:, 4].values
-    
+    feature_names = df.columns[5:14]
+
     # Split data
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
-    
-    # Train Stacking Ensemble Model
-    
+
     with st.spinner("Training Stacking Ensemble Model..."):
+        # Random Forest model
         rf_model = RandomForestRegressor(
             n_estimators=500,
             max_depth=10,
@@ -378,91 +381,82 @@ def show_regression_model(df):
             random_state=42,
             n_jobs=-1
         )
-        
-        # Create stacking ensemble
+
+        # XGBoost model
+        xgb_model = xgb.XGBRegressor(
+            objective="reg:squarederror",
+            n_estimators=1000,
+            learning_rate=0.01,
+            max_depth=3,
+            subsample=0.9,
+            random_state=42
+        )
+
+        # Stacking Regressor
         stack_model = StackingRegressor(
             estimators=[
                 ("rf", rf_model),
-                ("xgb", xgb.XGBRegressor(
-                    objective="reg:squarederror",
-                    n_estimators=1000,
-                    learning_rate=0.01,
-                    max_depth=3,
-                    subsample=0.9,
-                    random_state=42
-                )),
+                ("xgb", xgb_model),
             ],
             final_estimator=LinearRegression(),
             n_jobs=-1
         )
-        
-        # Train model
+
+        # Train models
         stack_model.fit(X_train, y_train)
         y_pred_stack = stack_model.predict(X_test)
-        
-        # Evaluate model
+
+        # Feature importance (Random Forest)
+        rf_model.fit(X_train, y_train)
+        rf_importances = rf_model.feature_importances_
+        indices_rf = np.argsort(rf_importances)[::-1]
+
+        # Evaluate Stacking Model
         mse = mean_squared_error(y_test, y_pred_stack)
         rmse = np.sqrt(mse)
         mae = mean_absolute_error(y_test, y_pred_stack)
         r2 = r2_score(y_test, y_pred_stack)
-        
+
         st.subheader("Evaluasi Model Stacking Ensemble")
-        
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{mse:.4f}</div>
-                <div class="metric-label">MSE</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
+            st.markdown(f"<div class='metric-card'><div class='metric-value'>{mse:.4f}</div><div class='metric-label'>MSE</div></div>", unsafe_allow_html=True)
         with col2:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{rmse:.4f}</div>
-                <div class="metric-label">RMSE</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
+            st.markdown(f"<div class='metric-card'><div class='metric-value'>{rmse:.4f}</div><div class='metric-label'>RMSE</div></div>", unsafe_allow_html=True)
         with col3:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{mae:.4f}</div>
-                <div class="metric-label">MAE</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
+            st.markdown(f"<div class='metric-card'><div class='metric-value'>{mae:.4f}</div><div class='metric-label'>MAE</div></div>", unsafe_allow_html=True)
         with col4:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{r2:.4f}</div>
-                <div class="metric-label">R² Score</div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Visualisasi model
+            st.markdown(f"<div class='metric-card'><div class='metric-value'>{r2:.4f}</div><div class='metric-label'>R² Score</div></div>", unsafe_allow_html=True)
+
+        # ===============================
+        # Visualisasi Model
+        # ===============================
         st.subheader("Visualisasi Model")
 
-        fig_width = 8
-        fig_height = 6
-        plt.rcParams['font.size'] = 10
+        col_left, col_right = st.columns(2)
 
-        # Prediction visualization
-        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
-        ax.scatter(y_test, y_pred_stack, alpha=0.6, color="blue")
-        ax.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], "r--", linewidth=2)
-        ax.set_xlabel("Actual Values", fontsize=12)
-        ax.set_ylabel("Predicted Values", fontsize=12)
-        ax.set_title("Regresi Menggunakan Stacking Regression", fontsize=14, fontweight='bold', pad=20)
-        ax.grid(alpha=0.3)
+        with col_left:
+            fig, ax = plt.subplots(figsize=(6, 6))
+            ax.barh(range(len(indices_rf)), rf_importances[indices_rf], color="skyblue")
+            ax.set_yticks(range(len(indices_rf)))
+            ax.set_yticklabels([feature_names[i] for i in indices_rf])
+            ax.set_xlabel("Importance")
+            ax.set_ylabel("Features")
+            ax.set_title("Feature Importance (Random Forest)")
+            ax.invert_yaxis()
+            ax.grid(alpha=0.3, linestyle="--")
+            st.pyplot(fig)
 
-        # Ensure consistent layout
-        plt.tight_layout()
-        st.pyplot(fig, use_container_width=True)
-        plt.close() 
-
-
+        with col_right:
+            fig, ax = plt.subplots(figsize=(6, 6))
+            ax.scatter(y_test, y_pred_stack, alpha=0.6, color="blue")
+            ax.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], "r--", linewidth=2)
+            ax.set_xlabel("Actual Values", fontsize=12)
+            ax.set_ylabel("Predicted Values", fontsize=12)
+            ax.set_title("Regresi Menggunakan Stacking Regression", fontsize=14, fontweight='bold', pad=20)
+            ax.grid(alpha=0.3)
+            plt.tight_layout()
+            st.pyplot(fig) 
 
 # Forecasting
 def detect_outliers_iqr(df, column='total_jumlah'):
