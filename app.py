@@ -357,8 +357,11 @@ def show_clustering_analysis():
             """)
 
 # Regression model
-def show_regression_model(df):
+def show_regression_model():
     st.header("Prediksi Stunting dengan Model Regresi")
+    
+    # Load regression data
+    df = load_regression_data()
     
     # Select features and target
     X = df.iloc[:, 5:14].values
@@ -643,8 +646,7 @@ def main():
         elif app_mode == "Clustering Analysis":
             show_clustering_analysis()
         elif app_mode == "Regression Model":
-            df = load_overview_data()
-            show_regression_model(df)
+            show_regression_model()
         elif app_mode == "Forecasting":
             show_forecasting()
             
