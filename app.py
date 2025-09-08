@@ -352,7 +352,7 @@ def show_clustering_analysis():
             - Perkuat sistem **monitoring & evaluasi**  
             """)
 
-# Regression model
+# Function to display regression model
 def show_regression_model(df):
     st.header("Prediksi Stunting dengan Model Regresi")
     
@@ -360,14 +360,17 @@ def show_regression_model(df):
     X = df.iloc[:, 5:14].values
     y = df.iloc[:, 4].values
     
+    # Feature names
+    feature_names = df.columns[5:14].tolist()
+    
     # Split data
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
     
     # Train Stacking Ensemble Model
-    
     with st.spinner("Training Stacking Ensemble Model..."):
+        # Create base models
         rf_model = RandomForestRegressor(
             n_estimators=500,
             max_depth=10,
@@ -443,24 +446,33 @@ def show_regression_model(df):
         
         # Visualisasi model
         st.subheader("Visualisasi Model")
-
-        fig_width = 8
-        fig_height = 6
-        plt.rcParams['font.size'] = 10
-
-        # Prediction visualization
-        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
-        ax.scatter(y_test, y_pred_stack, alpha=0.6, color="blue")
-        ax.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], "r--", linewidth=2)
-        ax.set_xlabel("Actual Values", fontsize=12)
-        ax.set_ylabel("Predicted Values", fontsize=12)
-        ax.set_title("Regresi Menggunakan Stacking Regression", fontsize=14, fontweight='bold', pad=20)
-        ax.grid(alpha=0.3)
-
-        # Ensure consistent layout
-        plt.tight_layout()
-        st.pyplot(fig, use_container_width=True)
-        plt.close() 
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Prediction visualization
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.scatter(y_test, y_pred_stack, alpha=0.6, color="blue")
+            ax.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], "r--", linewidth=2)
+            ax.set_xlabel("Actual Values", fontsize=12)
+            ax.set_ylabel("Predicted Values", fontsize=12)
+            ax.set_title("Regresi Menggunakan Stacking Regression", fontsize=14, fontweight='bold')
+            ax.grid(alpha=0.3)
+            st.pyplot(fig)
+        
+        with col2:
+            # Feature Importance dengan Random Forest
+            rf_importances = rf_model.feature_importances_
+            indices_rf = np.argsort(rf_importances)[::-1]
+            
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.barh(range(len(indices_rf)), rf_importances[indices_rf])
+            ax.set_yticks(range(len(indices_rf)), [feature_names[i] for i in indices_rf])
+            ax.set_xlabel("Importance", fontsize=12)
+            ax.set_ylabel("Features", fontsize=12)
+            ax.set_title("Feature Importance", fontsize=14, fontweight='bold')
+            ax.invert_yaxis()
+            ax.grid(alpha=0.3, linestyle="--")
+            st.pyplot(fig) 
 
 
 
