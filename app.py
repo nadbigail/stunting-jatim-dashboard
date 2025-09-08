@@ -367,14 +367,19 @@ def show_regression_model():
     X = df.iloc[:, 5:14].values
     y = df.iloc[:, 4].values
     
+    # Get feature names
+    feature_names = df.columns[5:14]
+    
     # Split data
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42
     )
     
-    # Train Stacking Ensemble Model
+    # Create two columns for visualizations
+    col1, col2 = st.columns(2)
     
-    with st.spinner("Training Stacking Ensemble Model..."):
+    # Train Random Forest for feature importance
+    with st.spinner("Training Random Forest Model..."):
         rf_model = RandomForestRegressor(
             n_estimators=500,
             max_depth=10,
@@ -385,7 +390,27 @@ def show_regression_model():
             random_state=42,
             n_jobs=-1
         )
+        rf_model.fit(X_train, y_train)
         
+        # Feature Importance dengan Random Forest
+        rf_importances = rf_model.feature_importances_
+        indices_rf = np.argsort(rf_importances)[::-1]
+        
+        # Plot feature importance
+        with col1:
+            st.subheader("Feature Importance")
+            fig, ax = plt.subplots(figsize=(8, 6))
+            ax.barh(range(len(indices_rf)), rf_importances[indices_rf])
+            ax.set_yticks(range(len(indices_rf)), [feature_names[i] for i in indices_rf])
+            ax.set_xlabel("Importance")
+            ax.set_ylabel("Features")
+            ax.set_title("Feature Importance - Random Forest")
+            ax.invert_yaxis()
+            ax.grid(alpha=0.3, linestyle="--")
+            st.pyplot(fig)
+    
+    # Train Stacking Ensemble Model
+    with st.spinner("Training Stacking Ensemble Model..."):
         # Create stacking ensemble
         stack_model = StackingRegressor(
             estimators=[
@@ -413,61 +438,53 @@ def show_regression_model():
         mae = mean_absolute_error(y_test, y_pred_stack)
         r2 = r2_score(y_test, y_pred_stack)
         
-        st.subheader("Evaluasi Model Stacking Ensemble")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{mse:.4f}</div>
-                <div class="metric-label">MSE</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
+        # Plot prediction visualization
         with col2:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{rmse:.4f}</div>
-                <div class="metric-label">RMSE</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with col3:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{mae:.4f}</div>
-                <div class="metric-label">MAE</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        with col4:
-            st.markdown(f"""
-            <div class="metric-card">
-                <div class="metric-value">{r2:.4f}</div>
-                <div class="metric-label">R² Score</div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.subheader("Prediction Visualization")
+            fig, ax = plt.subplots(figsize=(8, 6))
+            ax.scatter(y_test, y_pred_stack, alpha=0.6, color="blue")
+            ax.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], "r--", linewidth=2)
+            ax.set_xlabel("Actual Values", fontsize=12)
+            ax.set_ylabel("Predicted Values", fontsize=12)
+            ax.set_title("Regresi Menggunakan Stacking Regression", fontsize=14, fontweight='bold', pad=20)
+            ax.grid(alpha=0.3)
+            st.pyplot(fig)
+    
+    # Display evaluation metrics
+    st.subheader("Evaluasi Model Stacking Ensemble")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{mse:.4f}</div>
+            <div class="metric-label">MSE</div>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Visualisasi model
-        st.subheader("Visualisasi Model")
-
-        fig_width = 8
-        fig_height = 6
-        plt.rcParams['font.size'] = 10
-
-        # Prediction visualization
-        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
-        ax.scatter(y_test, y_pred_stack, alpha=0.6, color="blue")
-        ax.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], "r--", linewidth=2)
-        ax.set_xlabel("Actual Values", fontsize=12)
-        ax.set_ylabel("Predicted Values", fontsize=12)
-        ax.set_title("Regresi Menggunakan Stacking Regression", fontsize=14, fontweight='bold', pad=20)
-        ax.grid(alpha=0.3)
-
-        # Ensure consistent layout
-        plt.tight_layout()
-        st.pyplot(fig, use_container_width=True)
-        plt.close() 
+    with col2:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{rmse:.4f}</div>
+            <div class="metric-label">RMSE</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col3:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{mae:.4f}</div>
+            <div class="metric-label">MAE</div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col4:
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-value">{r2:.4f}</div>
+            <div class="metric-label">R² Score</div>
+        </div>
+        """, unsafe_allow_html=True) 
 
 
 
