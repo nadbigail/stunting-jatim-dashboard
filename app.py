@@ -542,37 +542,12 @@ def show_forecasting():
     
     # === Visualisasi Data (pakai gambar) ===
     st.subheader("Visualisasi Data")
-    st.image("visualisasi data.png", caption="Visualisasi Data Stunting Jawa Timur")
-    
-    # Forecasting
-    tahun_prediksi = [2025, 2026, 2027, 2028]
-    pred_lr = forecast_linear_aggregated(df_aggregated, tahun_prediksi)
-    pred_arima = forecast_arima_aggregated(df_aggregated, tahun_prediksi)
-    
-    if pred_arima is not None:
-        prediksi_values = (pred_lr + pred_arima) / 2
-    else:
-        prediksi_values = pred_lr
-    
-    hasil_forecast = []
-    for i, tahun in enumerate(tahun_prediksi):
-        hasil_forecast.append({
-            'tahun': tahun,
-            'total_prediksi': prediksi_values[i],
-            'metode': 'Rata-rata Linear+ARIMA' if pred_arima is not None else 'Linear Regression'
-        })
-    df_forecast_aggregated = pd.DataFrame(hasil_forecast)
-    
+    st.image("visualisasi data.png")
+
     # === Visualisasi Forecasting (pakai gambar) ===
     st.subheader("Visualisasi Forecasting")
-    st.image("visualisasi forecasting.png", caption="Hasil Forecasting Stunting Jawa Timur 2025-2028")
+    st.image("visualisasi forecasting.png")
     
-    # Tampilkan tabel hasil prediksi juga kalau mau
-    st.subheader("Tabel Hasil Forecasting")
-    st.dataframe(df_forecast_aggregated)
-
-
-
 # Main app
 def main():
     st.title("Dashboard Analisis Stunting")
