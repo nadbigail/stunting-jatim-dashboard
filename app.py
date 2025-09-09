@@ -530,61 +530,6 @@ def handle_outliers(df, column='total_jumlah', method='cap'):
     return df
 
 # Dashboard forecasting
-# Outlier handling functions
-# Outlier handling functions
-def detect_outliers_iqr(df, column='total_jumlah'):
-    """Detect outliers menggunakan IQR method"""
-    Q1 = df[column].quantile(0.25)
-    Q3 = df[column].quantile(0.75)
-    IQR = Q3 - Q1
-    lower_bound = Q1 - 1.5 * IQR
-    upper_bound = Q3 + 1.5 * IQR
-
-    outliers = df[(df[column] < lower_bound) | (df[column] > upper_bound)]
-    return outliers, lower_bound, upper_bound
-
-def handle_outliers(df, column='total_jumlah', method='cap'):
-    """Handle outliers dengan berbagai metode"""
-    outliers, lower_bound, upper_bound = detect_outliers_iqr(df, column)
-
-    st.write(f"Jumlah outliers detected: {len(outliers)}")
-    st.write(f"Lower bound: {lower_bound:.2f}, Upper bound: {upper_bound:.2f}")
-
-    if len(outliers) > 0:
-        df_clean = df.copy()
-
-        if method == 'cap':
-            # Cap outliers ke boundary values
-            df_clean[column] = np.where(df_clean[column] < lower_bound, lower_bound,
-                                       np.where(df_clean[column] > upper_bound, upper_bound,
-                                               df_clean[column]))
-            st.write("Outliers handled dengan capping method")
-
-        elif method == 'remove':
-            # Remove outliers
-            df_clean = df_clean[~df_clean.index.isin(outliers.index)]
-            st.write("Outliers handled dengan removal method")
-
-        elif method == 'transform':
-            # Log transform untuk reduce skewness
-            df_clean[column] = np.log1p(df_clean[column])
-            st.write("Outliers handled dengan log transform")
-
-        return df_clean
-    return df
-
-# Forecasting functions
-def forecast_linear_aggregated(df_agg, tahun_mendatang):
-    X = df_agg[['tahun']].values
-    y = df_agg['total_jumlah'].values
-    model = LinearRegression()
-    model.fit(X, y)
-
-    prediksi = model.predict(np.array(tahun_mendatang).reshape(-1, 1))
-
-    return prediksi
-
-# Main function
 def show_forecasting():
     st.header("Forecasting Kasus Stunting di Jawa Timur untuk Tahun 2025 - 2028")
     df = load_forecasting_data()
@@ -592,95 +537,104 @@ def show_forecasting():
     # Preprocessing Data
     df_aggregated = df.groupby('tahun')['jumlah'].sum().reset_index()
     df_aggregated.rename(columns={'jumlah': 'total_jumlah'}, inplace=True)
-
-    st.subheader("Data Agregasi (SUM per Tahun):")
-    st.dataframe(df_aggregated)
     
     # Handle outliers
     df_aggregated = handle_outliers(df_aggregated, column='total_jumlah', method='cap')
     
-    # Statistik Deskriptif
-    st.subheader("Statistik Deskriptif Total Kasus per Tahun:")
-    st.write(df_aggregated['total_jumlah'].describe())
-    
-    st.subheader("Total Stunting per Tahun (Setelah Outlier Handling):")
-    st.dataframe(df_aggregated)
-    
     # Set style untuk visualisasi
-    plt.style.use('default')
+    plt.style.use('seaborn-v0_8')
     sns.set_palette("husl")
     
-    # Visualizations
+    # Visualizations - Updated to match model code
     st.subheader("Visualisasi Data")
     
-    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
+    fig, axes = plt.subplots(2, 2, figsize=(15, 10))
     
     # Plot 1: Trend Total Kasus Nasional
     sns.lineplot(data=df_aggregated, x='tahun', y='total_jumlah',
                  marker='o', linewidth=2.5, ax=axes[0, 0])
-    axes[0, 0].set_title('Trend Total Stunting Jawa Timur (2019-2024)', fontweight='bold')
+    axes[0, 0].set_title('Trend Total Stunting Jawa Timur (2019-2024)')
     axes[0, 0].set_xlabel('Tahun')
     axes[0, 0].set_ylabel('Total Jumlah Stunting')
     axes[0, 0].grid(True, alpha=0.3)
     
     # Plot 2: Jumlah Stunting per Kabupaten/Kota tahun 2024
     df_2024 = df[df['tahun'] == 2024]
-    # Ambil 10 kabupaten/kota dengan jumlah stunting tertinggi untuk visualisasi yang lebih baik
-    top_10_2024 = df_2024.nlargest(10, 'jumlah')
-    sns.barplot(data=top_10_2024, x='nama_kabupaten_kota', y='jumlah', ax=axes[0, 1])
-    axes[0, 1].set_title('10 Kabupaten/Kota dengan Stunting Tertinggi (2024)', fontweight='bold')
+    sns.barplot(data=df_2024, x='nama_kabupaten_kota', y='jumlah', ax=axes[0, 1])
+    axes[0, 1].set_title('Jumlah Stunting per Kabupaten/Kota (2024)')
     axes[0, 1].set_xlabel('Kabupaten/Kota')
     axes[0, 1].set_ylabel('Jumlah Stunting')
-    axes[0, 1].tick_params(axis='x', rotation=45)
+    axes[0, 1].tick_params(axis='x', rotation=90)
     
     # Plot 3: Growth rate
     growth_rates = df_aggregated['total_jumlah'].pct_change() * 100
-    axes[1, 0].plot(df_aggregated['tahun'][1:], growth_rates[1:], 'o-', color='red', linewidth=2)
-    axes[1, 0].set_title('Growth Rate Total Stunting (%)', fontweight='bold')
+    axes[1, 0].plot(df_aggregated['tahun'][1:], growth_rates[1:], 'o-', color='red')
+    axes[1, 0].set_title('Growth Rate Total Stunting (%)')
     axes[1, 0].set_xlabel('Tahun')
     axes[1, 0].set_ylabel('Growth Rate (%)')
     axes[1, 0].grid(True, alpha=0.3)
     
     # Plot 4: Distribusi Jumlah Stunting 2024
     sns.histplot(df_2024['jumlah'], bins=10, kde=True, ax=axes[1, 1])
-    axes[1, 1].set_title('Distribusi Jumlah Stunting per Kabupaten/Kota (2024)', fontweight='bold')
+    axes[1, 1].set_title('Distribusi Jumlah Stunting per Kabupaten/Kota (2024)')
     axes[1, 1].set_xlabel('Jumlah Stunting')
     axes[1, 1].set_ylabel('Frekuensi')
     
     plt.tight_layout()
     st.pyplot(fig)
     
+    # Display Descriptive Statistics
+    st.subheader("Analisis Data Stunting Jawa Timur")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.write("**Statistik Deskriptif Total Kasus per Tahun:**")
+        st.write(df_aggregated['total_jumlah'].describe())
+    
+    with col2:
+        st.write("**Total Stunting per Tahun:**")
+        st.dataframe(df_aggregated)
+    
     # Forecasting
+    st.subheader("Forecasting Total Stunting 2025-2028")
+    
     tahun_prediksi = [2025, 2026, 2027, 2028]
     
-    # Perform forecasting (hanya Linear Regression karena ARIMA error)
+    # Perform forecasting
     pred_lr = forecast_linear_aggregated(df_aggregated, tahun_prediksi)
+    pred_arima = forecast_arima_aggregated(df_aggregated, tahun_prediksi)
     
-    st.warning("Error dalam ARIMA: name 'ARIMA' is not defined. Menggunakan Linear Regression saja.")
-    
+    # Create forecast results
     hasil_forecast = []
     for i, tahun in enumerate(tahun_prediksi):
+        if pred_arima is not None:
+            pred_rata_rata = (pred_lr[i] + pred_arima[i]) / 2
+            metode = 'Rata-rata Linear+ARIMA'
+            nilai_prediksi = max(0, pred_rata_rata)
+        else:
+            metode = 'Linear Regression'
+            nilai_prediksi = max(0, pred_lr[i])
         hasil_forecast.append({
             'tahun': tahun,
-            'total_prediksi': pred_lr[i],
-            'metode': 'Linear Regression'
+            'total_prediksi': nilai_prediksi,
+            'metode': metode
         })
     
     df_forecast_aggregated = pd.DataFrame(hasil_forecast)
     
     # Display forecast results
-    st.subheader("Hasil Forecasting Total Stunting 2025-2028:")
+    st.write("**Hasil Forecasting Total Stunting 2025-2028:**")
     st.dataframe(df_forecast_aggregated)
     
-    # Tampilkan ringkasan forecasting
-    st.subheader("Ringkasan Forecasting Total Stunting:")
+    st.write("**Ringkasan Forecasting Total Stunting:**")
     for _, row in df_forecast_aggregated.iterrows():
-        st.write(f"Tahun {row['tahun']}: Total Prediksi Stunting = {row['total_prediksi']:,.0f} kasus")
+        st.write(f"Tahun {int(row['tahun'])}: Total Prediksi Stunting = {row['total_prediksi']:,.0f} kasus")
     
     # Visualize forecasting results
-    st.subheader("Visualisasi Forecasting")
+    st.subheader("Visualisasi Hasil Forecasting")
     
-    fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+    fig, axes = plt.subplots(1, 2, figsize=(15, 8))
     
     df_combined = pd.concat([
         df_aggregated[['tahun', 'total_jumlah']].assign(type='Historikal'),
@@ -692,12 +646,12 @@ def show_forecasting():
     sns.lineplot(data=df_combined, x='tahun', y='total_jumlah',
                  hue='type', style='type', markers=True, dashes=False, 
                  linewidth=2.5, ax=axes[0])
-    axes[0].set_title('Trend Total Stunting', fontweight='bold')
+    axes[0].set_title('Trend Total Stunting')
     axes[0].set_xlabel('Tahun')
     axes[0].set_ylabel('Total Jumlah Stunting')
     axes[0].grid(True, alpha=0.3)
     
-    # Plot 2: Forecast dengan confidence interval
+    # Plot 2: Forecast with confidence interval
     axes[1].plot(df_aggregated['tahun'], df_aggregated['total_jumlah'],
                 'o-', label='Historikal', linewidth=2, markersize=8)
     
@@ -709,7 +663,7 @@ def show_forecasting():
     axes[1].plot(tahun_prediksi, prediksi_values, 's-', label='Prediksi', linewidth=2, markersize=8)
     axes[1].fill_between(tahun_prediksi, lower_bound, upper_bound, alpha=0.3, label='Range Prediksi')
     
-    axes[1].set_title('Prediksi Total Stunting dengan Confidence Interval', fontweight='bold')
+    axes[1].set_title('Prediksi Total Stunting dengan Confidence Interval')
     axes[1].set_xlabel('Tahun')
     axes[1].set_ylabel('Total Jumlah Stunting')
     axes[1].legend()
@@ -718,38 +672,26 @@ def show_forecasting():
     plt.tight_layout()
     st.pyplot(fig)
     
-    # Analisis Hasil Forecasting
+    # Analysis Section
     st.subheader("Analisis Trend dan Proyeksi")
     
-    # Hitung growth rate historis
+    # Calculate historical growth rate
     historical_growth = df_aggregated['total_jumlah'].pct_change().mean() * 100
-    st.write(f"Rata-rata Growth Rate Historis: {historical_growth:.2f}% per tahun")
+    st.write(f"**Rata-rata Growth Rate Historis:** {historical_growth:.2f}% per tahun")
     
-    # Proyeksi berdasarkan trend
+    # Projection based on trend
     latest_value = df_aggregated['total_jumlah'].iloc[-1]
-    st.write(f"Proyeksi berdasarkan growth rate {historical_growth:.2f}%:")
+    st.write(f"**Proyeksi berdasarkan growth rate {historical_growth:.2f}%:**")
     
     proyeksi_data = []
     for tahun in tahun_prediksi:
         proyeksi = latest_value * ((1 + historical_growth/100) ** (tahun - df_aggregated['tahun'].iloc[-1]))
         proyeksi_data.append({
             'Tahun': tahun,
-            'Proyeksi Kasus': f"{proyeksi:,.0f}"
+            'Proyeksi (kasus)': f"{proyeksi:,.0f}"
         })
     
-    st.table(pd.DataFrame(proyeksi_data))
-    
-    # Perbandingan metode
-    st.subheader("Perbandingan Metode Forecasting")
-    comparison_data = []
-    for i, tahun in enumerate(tahun_prediksi):
-        comparison_data.append({
-            'Tahun': tahun,
-            'Linear Regression': f"{pred_lr[i]:,.0f}",
-            'Proyeksi Growth Rate': f"{float(proyeksi_data[i]['Proyeksi Kasus'].replace(',', '')):,.0f}"
-        })
-    
-    st.table(pd.DataFrame(comparison_data))
+    st.dataframe(pd.DataFrame(proyeksi_data))
 
 # Main app
 def main():
