@@ -530,6 +530,7 @@ def handle_outliers(df, column='total_jumlah', method='cap'):
     return df
 
 # Dashboard forecasting
+# Dashboard forecasting
 def show_forecasting():
     st.header("Forecasting Kasus Stunting di Jawa Timur untuk Tahun 2025 - 2028")
     df = load_forecasting_data()
@@ -539,52 +540,15 @@ def show_forecasting():
     df_aggregated.rename(columns={'jumlah': 'total_jumlah'}, inplace=True)
     df_aggregated = handle_outliers(df_aggregated, column='total_jumlah', method='cap')
     
-    # Visualization style
-    plt.style.use('default')
-    sns.set_palette("viridis")
-    
+    # === Visualisasi Data (pakai gambar) ===
     st.subheader("Visualisasi Data")
-    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    
-    # Plot 1: Trend Total Kasus (2019-2024)
-    sns.lineplot(data=df_aggregated, x='tahun', y='total_jumlah',
-                 marker='o', linewidth=2.5, ax=axes[0, 0])
-    axes[0, 0].set_title('Trend Total Stunting Jawa Timur (2019-2024)', fontweight='bold')
-    axes[0, 0].set_xlabel('Tahun')
-    axes[0, 0].set_ylabel('Total Jumlah Stunting')
-    axes[0, 0].grid(True, alpha=0.3)
-    
-    # Plot 2: Jumlah Stunting per Kabupaten/Kota (2024)
-    df_2024 = df[df['tahun'] == 2024]
-    sns.barplot(data=df_2024, x='nama_kabupaten_kota', y='jumlah', ax=axes[0, 1])
-    axes[0, 1].set_title('Jumlah Stunting per Kabupaten/Kota (2024)', fontweight='bold')
-    axes[0, 1].set_xlabel('Kabupaten/Kota')
-    axes[0, 1].set_ylabel('Jumlah Stunting')
-    axes[0, 1].tick_params(axis='x', rotation=90)
-    
-    # Plot 3: Growth Rate
-    growth_rates = df_aggregated['total_jumlah'].pct_change() * 100
-    axes[1, 0].plot(df_aggregated['tahun'][1:], growth_rates[1:], 'o-', color='red', linewidth=2)
-    axes[1, 0].set_title('Growth Rate Total Stunting (%)', fontweight='bold')
-    axes[1, 0].set_xlabel('Tahun')
-    axes[1, 0].set_ylabel('Growth Rate (%)')
-    axes[1, 0].grid(True, alpha=0.3)
-    
-    # Plot 4: Distribusi Jumlah Stunting (2024)
-    sns.histplot(df_2024['jumlah'], bins=10, kde=True, ax=axes[1, 1])
-    axes[1, 1].set_title('Distribusi Jumlah Stunting per Kabupaten/Kota (2024)', fontweight='bold')
-    axes[1, 1].set_xlabel('Jumlah Stunting')
-    axes[1, 1].set_ylabel('Frekuensi')
-    
-    plt.tight_layout()
-    st.pyplot(fig)
+    st.image("visualisasi data.png", caption="Visualisasi Data Stunting Jawa Timur")
     
     # Forecasting
     tahun_prediksi = [2025, 2026, 2027, 2028]
     pred_lr = forecast_linear_aggregated(df_aggregated, tahun_prediksi)
     pred_arima = forecast_arima_aggregated(df_aggregated, tahun_prediksi)
     
-    # Default values (based on your earlier results)
     if pred_arima is not None:
         prediksi_values = (pred_lr + pred_arima) / 2
     else:
@@ -599,42 +563,14 @@ def show_forecasting():
         })
     df_forecast_aggregated = pd.DataFrame(hasil_forecast)
     
-    # Visualize Forecasting
+    # === Visualisasi Forecasting (pakai gambar) ===
     st.subheader("Visualisasi Forecasting")
-    fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+    st.image("visualisasi forecasting.png", caption="Hasil Forecasting Stunting Jawa Timur 2025-2028")
     
-    df_combined = pd.concat([
-        df_aggregated[['tahun', 'total_jumlah']].assign(type='Historikal'),
-        df_forecast_aggregated[['tahun', 'total_prediksi']].rename(
-            columns={'total_prediksi': 'total_jumlah'}).assign(type='Prediksi')
-    ])
-    
-    # Plot 1: Historikal vs Prediksi
-    sns.lineplot(data=df_combined, x='tahun', y='total_jumlah',
-                 hue='type', style='type', markers=True, dashes=False,
-                 linewidth=2.5, ax=axes[0])
-    axes[0].set_title('Trend Total Stunting', fontweight='bold')
-    axes[0].set_xlabel('Tahun')
-    axes[0].set_ylabel('Total Jumlah Stunting')
-    axes[0].grid(True, alpha=0.3)
-    
-    # Plot 2: Forecast with confidence interval
-    axes[1].plot(df_aggregated['tahun'], df_aggregated['total_jumlah'],
-                 'o-', label='Historikal', linewidth=2, markersize=8)
-    upper_bound = prediksi_values * 1.1
-    lower_bound = prediksi_values * 0.9
-    axes[1].plot(tahun_prediksi, prediksi_values, 's-', label='Prediksi',
-                 linewidth=2, markersize=8)
-    axes[1].fill_between(tahun_prediksi, lower_bound, upper_bound,
-                         alpha=0.3, label='Range Prediksi')
-    axes[1].set_title('Prediksi Total Stunting dengan Confidence Interval', fontweight='bold')
-    axes[1].set_xlabel('Tahun')
-    axes[1].set_ylabel('Total Jumlah Stunting')
-    axes[1].legend()
-    axes[1].grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    st.pyplot(fig)
+    # Tampilkan tabel hasil prediksi juga kalau mau
+    st.subheader("Tabel Hasil Forecasting")
+    st.dataframe(df_forecast_aggregated)
+
 
 
 # Main app
