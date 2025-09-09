@@ -679,6 +679,12 @@ def show_forecasting():
     historical_growth = df_aggregated['total_jumlah'].pct_change().mean() * 100
     st.write(f"**Rata-rata Growth Rate Historis:** {historical_growth:.2f}% per tahun")
     
+    # Display additional growth rate information
+    growth_rates_display = df_aggregated['total_jumlah'].pct_change() * 100
+    st.write("**Growth Rate per Tahun:**")
+    for i, (tahun, rate) in enumerate(zip(df_aggregated['tahun'][1:], growth_rates_display[1:])):
+        st.write(f"- {int(tahun-1)} ke {int(tahun)}: {rate:.2f}%")
+    
     # Projection based on trend
     latest_value = df_aggregated['total_jumlah'].iloc[-1]
     st.write(f"**Proyeksi berdasarkan growth rate {historical_growth:.2f}%:**")
